@@ -1,0 +1,29 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing / type checking
+.pytest_cache/
+.mypy_cache/
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# IDE / editor
+.vscode/
+.idea/
+
