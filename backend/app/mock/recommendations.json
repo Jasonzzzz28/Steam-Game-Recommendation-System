@@ -1,0 +1,42 @@
+[
+  {
+    "appId": "1091500",
+    "title": "Cyberpunk 2077",
+    "score": 0.92,
+    "reason": "Top match for similar users; strong engagement last 30d",
+    "tags": ["RPG", "Open World", "Story Rich"],
+    "price": 29.99,
+    "platforms": ["windows"],
+    "language": "english"
+  },
+  {
+    "appId": "271590",
+    "title": "Grand Theft Auto V",
+    "score": 0.89,
+    "reason": "Popular with your co-play cluster and high positive_ratio",
+    "tags": ["Action", "Multiplayer", "Shooter"],
+    "price": 14.99,
+    "platforms": ["windows", "linux"],
+    "language": "english"
+  },
+  {
+    "appId": "1446780",
+    "title": "Lies of P",
+    "score": 0.86,
+    "reason": "Recent hits similar to your soulslike library",
+    "tags": ["Souls-like", "Singleplayer"],
+    "price": 59.99,
+    "platforms": ["windows"],
+    "language": "schinese"
+  },
+  {
+    "appId": "381210",
+    "title": "Dead by Daylight",
+    "score": 0.83,
+    "reason": "Co-op horror trending in your cohort",
+    "tags": ["Horror", "Co-op", "Multiplayer"],
+    "price": 19.99,
+    "platforms": ["windows", "mac"],
+    "language": "english"
+  }
+]

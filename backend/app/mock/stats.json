@@ -1,0 +1,14 @@
+{
+  "reviews": 41154794,
+  "games": 50872,
+  "users": 14306064,
+  "avg_price": 14.5,
+  "positive_ratio": 0.74,
+  "trends": [
+    { "label": "2021-10", "value": 820000 },
+    { "label": "2021-11", "value": 915000 },
+    { "label": "2021-12", "value": 1030000 },
+    { "label": "2022-01", "value": 980000 },
+    { "label": "2022-02", "value": 1075000 }
+  ]
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "stage": "Raw ingestion (Person1)",
+    "owner": "Person1",
+    "status": "pass",
+    "updatedAt": "2h ago",
+    "details": "CSV + JSON uploaded to s3://steam-reco-team-yw1204/raw/steam_kaggle/dt=1205/",
+    "outputPath": "s3://steam-reco-team-yw1204/raw/steam_kaggle/dt=1205/"
+  },
+  {
+    "stage": "Curated Parquet + Hive (Person1)",
+    "owner": "Person1",
+    "status": "pass",
+    "updatedAt": "1h ago",
+    "details": "reviews_clean, games_clean, users_clean written with Snappy and partitions",
+    "outputPath": "s3://steam-reco-team-yw1204/curated/"
+  },
+  {
+    "stage": "Feature Store (Person2)",
+    "owner": "Person2",
+    "status": "warn",
+    "updatedAt": "25m ago",
+    "details": "Language + popularity features refreshed; sentiment pending",
+    "outputPath": "s3://steam-reco-team-yw1204/features/latest/"
+  },
+  {
+    "stage": "Recommendation Model (Person3)",
+    "owner": "Person3",
+    "status": "warn",
+    "updatedAt": "10m ago",
+    "details": "ALS v0.2 ready; reranking model training",
+    "outputPath": "s3://steam-reco-team-yw1204/models/als-v0.2/"
+  }
+]
