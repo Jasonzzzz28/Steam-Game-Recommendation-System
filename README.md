@@ -18,7 +18,63 @@ This project processes the full Kaggle *Game Recommendations on Steam* dataset a
 - Wrote curated data as **Parquet + Snappy** for efficient downstream processing
 - Stored results in an **AWS S3 data lake** (raw → curated → temp)
 
-### 2. Two Independent Recommendation Models
+### 2. Feature Engineering
+This module implements a full-scale feature engineering pipeline on AWS EMR using PySpark, transforming raw behavioral data into model-ready analytical tables. The pipeline consumes curated review, user, and game datasets stored in Amazon S3 (/curated/...) and produces three feature outputs:
+- User-level aggregated features
+- Game-level aggregated features
+- A unified interaction-level model feature table
+
+All outputs are saved back to S3 with versioned paths for reproducibility. (root:"s3a://steam-reco-team-yw1204/feature/model_feature_table_sx2492/v=2")
+
+#### 2.1 Data Loading & Setup
+- Loaded curated tables from S3: reviews, users, games.
+- Registered all as temporary SQL views for Spark SQL + PySpark workflows.
+
+#### 2.2 Large-Scale EDA
+
+Performed high-level distribution analysis:
+- User activity patterns
+- Game popularity trends
+- Recommendation ratios
+- Playtime, helpful/funny metrics
+All aggregations executed in Spark to avoid OOM.
+
+#### 2.3 User-Level Features
+
+Built a comprehensive user profile table including:
+- Total reviews
+- Recommendation ratio
+- Total & average playtime
+- Unique games
+- Helpful/funny metrics
+
+Derived metrics:
+- engagement_score = log1p(total_reviews) * recommend_ratio
+- activity_level = low / medium / high
+
+#### 2.4 Game-Level Features
+
+Aggregated gameplay & metadata attributes:
+- num_reviews, recommend_ratio
+- avg_hours, avg_helpful, avg_funny
+- unique_users
+- price, rating, positive_ratio
+- platform support, Steam Deck flag
+- release_year, is_free
+
+Derived:
+- popularity_score = num_reviews * recommend_ratio
+
+#### 2.5 Model Interaction Table 
+Joined:recommendations × user_features × game_features、
+Produced a unified training table including:
+- Binary label (1 = recommended)
+- User behavioral features
+- Game metadata features
+- Review-level attributes (hours, helpful, funny, date)
+
+  
+### 3. Two Independent Recommendation Models
 #### Content-Based Filtering (CBF)
 Uses game metadata:
 - TF-IDF on descriptions
@@ -31,7 +87,7 @@ Uses item-based KNN (sparse matrix model):
 - Computes item–item similarity
 - Returns recommended games even for sparse users
 
-### 3. Hybrid Recommender + Re-Ranking
+### 4. Hybrid Recommender + Re-Ranking
 Final recommendation score combines both systems:
 
 ```
@@ -53,11 +109,13 @@ Steam Recommender System
 ├── AWS S3 Data Lake
 │     ├── raw/      (original Kaggle files)
 │     ├── curated/  (clean parquet tables)
+│     └── feature/  (feature tables)
 │     └── tmp/      (ETL scratch space)
 │
-├── PySpark ETL
+├── PySpark ETL + Feature Engineering (EMR)
 │     ├── schema enforcement
 │     ├── cleansing + normalization
+│     ├── user/game feature generation
 │     ├── TF–IDF + tags preprocessing
 │     └── partitioned parquet output
 │
@@ -152,7 +210,7 @@ The project supports:
 - Stores raw and curated layers
 - ETL writes Parquet partitions directly into S3
 
-### AWS EMR (Optional)
+### AWS EMR
 - PySpark ETL is EMR-compatible
 - Can scale to hundreds of millions of interactions
 
