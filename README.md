@@ -18,7 +18,7 @@ This project processes the full Kaggle *Game Recommendations on Steam* dataset a
 - Wrote curated data as **Parquet + Snappy** for efficient downstream processing
 - Stored results in an **AWS S3 data lake** (raw → curated → temp)
 
-#### 1.1 S3 Data Lake (Person 1)
+#### 1.1 S3 Data Lake
 All raw and curated data is stored in the team S3 bucket:
 
 - **Bucket:** `s3://steam-reco-team-yw1204/`
@@ -29,7 +29,7 @@ Directory layout used in this project:
 - **Temp (optional scratch):** `s3://steam-reco-team-yw1204/tmp/`
 - **Athena query results (optional):** `s3://steam-reco-team-yw1204/athena_query_results/`
 
-#### 1.2 Raw Inputs (Person 1)
+#### 1.2 Raw Inputs
 Raw files ingested from Kaggle and stored under:
 
 ```
@@ -42,7 +42,7 @@ Raw files and schemas:
 - `users.csv`: `user_id, products, reviews`
 - `games_metadata.json`: JSON Lines containing (at minimum) `app_id, description, tags`
 
-#### 1.3 Curated Outputs (Person 1)
+#### 1.3 Curated Outputs
 All curated outputs are stored as **Parquet + Snappy** in versioned folders for reproducibility:
 
 - **reviews_clean (fact table)**  
@@ -59,7 +59,7 @@ All curated outputs are stored as **Parquet + Snappy** in versioned folders for 
   Location: `s3://steam-reco-team-yw1204/curated/users_clean/v=1/`  
   Key fields: `user_id, products_owned, reviews_count`
 
-#### 1.4 ETL Cleaning Rules (Person 1)
+#### 1.4 ETL Cleaning Rules
 ETL was implemented in **PySpark (Google Colab, EMR-compatible)** with the following rules:
 - **Schema enforcement** for all CSV sources; JSON normalized to `app_id, description, tags`
 - **Type normalization**
@@ -76,7 +76,7 @@ ETL was implemented in **PySpark (Google Colab, EMR-compatible)** with the follo
 - **Enrichment**
   - joined `games.csv` with `games_metadata.json` on `app_id` to attach `description` and `tags`
 
-#### 1.5 QA Metrics (Person 1)
+#### 1.5 QA Metrics
 Post-ETL validation (after cleaning + deduplication):
 - `reviews_clean` rows: **41,154,794**
 - `games_clean` rows: **50,872**
@@ -84,7 +84,7 @@ Post-ETL validation (after cleaning + deduplication):
 - distinct users in reviews: **13,781,059**
 - distinct apps in reviews: **37,610**
 
-#### 1.6 Querying Curated Data with Amazon Athena (External Table DDL) (Person 1)
+#### 1.6 Querying Curated Data with Amazon Athena (External Table DDL)
 Athena provides a serverless SQL interface over the curated Parquet tables on S3.
 
 **Step 0 (one-time):** In the Athena console, set the *Query result location* to:
