@@ -18,6 +18,167 @@ This project processes the full Kaggle *Game Recommendations on Steam* dataset a
 - Wrote curated data as **Parquet + Snappy** for efficient downstream processing
 - Stored results in an **AWS S3 data lake** (raw → curated → temp)
 
+#### 1.1 S3 Data Lake (Person 1)
+All raw and curated data is stored in the team S3 bucket:
+
+- **Bucket:** `s3://steam-reco-team-yw1204/`
+
+Directory layout used in this project:
+- **Raw (immutable Kaggle archive):** `s3://steam-reco-team-yw1204/raw/steam_kaggle/dt=1205/`
+- **Curated (ETL outputs):** `s3://steam-reco-team-yw1204/curated/`
+- **Temp (optional scratch):** `s3://steam-reco-team-yw1204/tmp/`
+- **Athena query results (optional):** `s3://steam-reco-team-yw1204/athena_query_results/`
+
+#### 1.2 Raw Inputs (Person 1)
+Raw files ingested from Kaggle and stored under:
+
+```
+s3://steam-reco-team-yw1204/raw/steam_kaggle/dt=1205/
+```
+
+Raw files and schemas:
+- `recommendations.csv`: `app_id, helpful, funny, date, is_recommended, hours, user_id, review_id`
+- `games.csv`: `app_id, title, date_release, win, mac, linux, rating, positive_ratio, user_reviews, price_final, price_original, discount, steam_deck`
+- `users.csv`: `user_id, products, reviews`
+- `games_metadata.json`: JSON Lines containing (at minimum) `app_id, description, tags`
+
+#### 1.3 Curated Outputs (Person 1)
+All curated outputs are stored as **Parquet + Snappy** in versioned folders for reproducibility:
+
+- **reviews_clean (fact table)**  
+  Location: `s3://steam-reco-team-yw1204/curated/reviews_clean/v=1/`  
+  Partition: `review_year=YYYY/`  
+  Key fields: `user_id, app_id, is_recommended, playtime_hours, helpful_votes, funny_votes, review_date, review_month`
+
+- **games_clean (dimension table)**  
+  Location: `s3://steam-reco-team-yw1204/curated/games_clean/v=1/`  
+  Partition: `release_year=YYYY/`  
+  Key fields: `app_id, title, description, tags, rating, positive_ratio, user_reviews, price_final, price_original, discount, win/mac/linux, steam_deck`
+
+- **users_clean (dimension table)**  
+  Location: `s3://steam-reco-team-yw1204/curated/users_clean/v=1/`  
+  Key fields: `user_id, products_owned, reviews_count`
+
+#### 1.4 ETL Cleaning Rules (Person 1)
+ETL was implemented in **PySpark (Google Colab, EMR-compatible)** with the following rules:
+- **Schema enforcement** for all CSV sources; JSON normalized to `app_id, description, tags`
+- **Type normalization**
+  - `date` / `date_release` parsed into proper dates and year/month derived
+  - pricing fields (`price_final`, `price_original`, `discount`) standardized to numeric types
+  - `is_recommended` normalized to `0/1`
+- **Filtering**
+  - dropped rows with missing `user_id` or `app_id`
+  - invalid dates dropped (unusable for partitioning/time-based analysis)
+  - negative playtime hours treated as invalid and set to null
+- **Deduplication**
+  - interaction key: `(user_id, app_id, review_date)`
+  - kept latest record by `review_id`
+- **Enrichment**
+  - joined `games.csv` with `games_metadata.json` on `app_id` to attach `description` and `tags`
+
+#### 1.5 QA Metrics (Person 1)
+Post-ETL validation (after cleaning + deduplication):
+- `reviews_clean` rows: **41,154,794**
+- `games_clean` rows: **50,872**
+- `users_clean` rows: **14,306,064**
+- distinct users in reviews: **13,781,059**
+- distinct apps in reviews: **37,610**
+
+#### 1.6 Querying Curated Data with Amazon Athena (External Table DDL) (Person 1)
+Athena provides a serverless SQL interface over the curated Parquet tables on S3.
+
+**Step 0 (one-time):** In the Athena console, set the *Query result location* to:
+
+```
+s3://steam-reco-team-yw1204/athena_query_results/
+```
+
+**Step 1:** Create a database (run in Athena Query Editor):
+
+```sql
+CREATE DATABASE IF NOT EXISTS steam_rec;
+```
+
+**Step 2:** Create external tables (run in Athena Query Editor).
+
+**(a) reviews_clean**
+
+```sql
+CREATE EXTERNAL TABLE IF NOT EXISTS steam_rec.reviews_clean (
+  app_id         INT,
+  user_id        STRING,
+  review_id      STRING,
+  helpful_votes  INT,
+  funny_votes    INT,
+  playtime_hours DOUBLE,
+  review_date    DATE,
+  review_month   INT,
+  is_recommended INT
+)
+PARTITIONED BY (review_year INT)
+STORED AS PARQUET
+LOCATION 's3://steam-reco-team-yw1204/curated/reviews_clean/v=1/';
+```
+
+Load partitions:
+
+```sql
+MSCK REPAIR TABLE steam_rec.reviews_clean;
+```
+
+**(b) games_clean**
+
+```sql
+CREATE EXTERNAL TABLE IF NOT EXISTS steam_rec.games_clean (
+  app_id          INT,
+  title           STRING,
+  release_date    DATE,
+  win             BOOLEAN,
+  mac             BOOLEAN,
+  linux           BOOLEAN,
+  rating          STRING,
+  positive_ratio  INT,
+  user_reviews    INT,
+  price_final     DOUBLE,
+  price_original  DOUBLE,
+  discount        DOUBLE,
+  steam_deck      BOOLEAN,
+  description     STRING,
+  tags            ARRAY<STRING>
+)
+PARTITIONED BY (release_year INT)
+STORED AS PARQUET
+LOCATION 's3://steam-reco-team-yw1204/curated/games_clean/v=1/';
+```
+
+Load partitions:
+
+```sql
+MSCK REPAIR TABLE steam_rec.games_clean;
+```
+
+**(c) users_clean**
+
+```sql
+CREATE EXTERNAL TABLE IF NOT EXISTS steam_rec.users_clean (
+  user_id        STRING,
+  products_owned INT,
+  reviews_count  INT
+)
+STORED AS PARQUET
+LOCATION 's3://steam-reco-team-yw1204/curated/users_clean/v=1/';
+```
+
+**Quick sanity query:**
+
+```sql
+SELECT COUNT(*) FROM steam_rec.reviews_clean;
+SELECT COUNT(*) FROM steam_rec.games_clean;
+SELECT COUNT(*) FROM steam_rec.users_clean;
+```
+
+---
+
 ### 2. Feature Engineering
 This module implements a full-scale feature engineering pipeline on AWS EMR using PySpark, transforming raw behavioral data into model-ready analytical tables. The pipeline consumes curated review, user, and game datasets stored in Amazon S3 (/curated/...) and produces three feature outputs:
 - User-level aggregated features
@@ -73,7 +234,7 @@ Produced a unified training table including:
 - Game metadata features
 - Review-level attributes (hours, helpful, funny, date)
 
-  
+
 ### 3. Two Independent Recommendation Models
 #### Content-Based Filtering (CBF)
 Uses game metadata:
